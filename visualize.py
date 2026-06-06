@@ -1,22 +1,3 @@
-"""
-EDA and visualization module for the GlobalTech HR Data Integration pipeline.
-
-Produces a professional multi-chart report saved as a high-resolution PNG (300 DPI).
-
-Charts:
-  1  Headcount by Department    (horizontal bar)
-  2  Headcount by Country       (horizontal bar, top 20)
-  3  Salary Distribution        (box plot by employment type)
-  4  Tenure Distribution        (histogram)
-  5  Benefits Enrollment Rate   (horizontal bar by department)
-  6  Data Quality Summary       (grouped bar: passed vs failed per check)
-
-Styling:
-  - Colorblind-safe palette (Okabe-Ito / seaborn "colorblind")
-  - Every chart has title, axis labels, and data source annotation
-  - Overall figure title with generation timestamp
-"""
-
 from datetime import datetime
 from pathlib import Path
 
@@ -29,8 +10,6 @@ import seaborn as sns
 from config import CONFIG
 from utils import logger
 
-# ── Palette & style constants ─────────────────────────────────────────────────
-# Okabe-Ito colorblind-safe palette
 PALETTE    = sns.color_palette("colorblind")
 CLR_BLUE   = PALETTE[0]   # #0072B2
 CLR_ORANGE = PALETTE[1]   # #E69F00
@@ -55,7 +34,7 @@ def _despine(ax):
     sns.despine(ax=ax, left=False, bottom=False)
 
 
-# ── Chart 1: Headcount by Department ─────────────────────────────────────────
+# Chart 1: Headcount by Department
 
 def chart_headcount_by_department(ax: plt.Axes, df: pd.DataFrame):
     counts = (
@@ -64,8 +43,8 @@ def chart_headcount_by_department(ax: plt.Axes, df: pd.DataFrame):
         .head(18)
         .sort_values()
     )
-    # colors = [PALETTE[i % len(PALETTE)] for i in range(len(counts))]
-    bars = ax.barh(counts.index, counts.values, color="#009E73", edgecolor="white")
+
+    bars = ax.barh(counts.index, counts.values, color=CLR_GREEN, edgecolor="white")
     ax.bar_label(bars, padding=3, fontsize=8)
     ax.set_xlabel("Headcount", fontsize=10)
     ax.set_title("Headcount by Department", fontsize=12, fontweight="bold", pad=10)
@@ -75,7 +54,7 @@ def chart_headcount_by_department(ax: plt.Axes, df: pd.DataFrame):
     _annotate_source(ax)
 
 
-# ── Chart 2: Headcount by Country ────────────────────────────────────────────
+# Chart 2: Headcount by Country
 
 def chart_headcount_by_country(ax: plt.Axes, df: pd.DataFrame):
     counts = (
@@ -84,7 +63,7 @@ def chart_headcount_by_country(ax: plt.Axes, df: pd.DataFrame):
         .head(20)
         .sort_values()
     )
-    # colors = [PALETTE[i % len(PALETTE)] for i in range(len(counts))]
+
     bars = ax.barh(counts.index, counts.values, color="#E69F00", edgecolor="white")
     ax.bar_label(bars, padding=3, fontsize=8)
     ax.set_xlabel("Headcount", fontsize=10)
@@ -95,7 +74,7 @@ def chart_headcount_by_country(ax: plt.Axes, df: pd.DataFrame):
     _annotate_source(ax)
 
 
-# ── Chart 3: Salary Distribution by Employment Type (Box Plot) ───────────────
+# Chart 3: Salary Distribution by Employment Type (Box Plot)
 
 def chart_salary_by_employment_type(ax: plt.Axes, df: pd.DataFrame):
     salary_df = df.dropna(subset=["salary_usd_annual", "employment_type"]).copy()
@@ -123,7 +102,7 @@ def chart_salary_by_employment_type(ax: plt.Axes, df: pd.DataFrame):
     _annotate_source(ax)
 
 
-# ── Chart 4: Tenure Distribution ─────────────────────────────────────────────
+# Chart 4: Tenure Distribution
 
 def chart_tenure_distribution(ax: plt.Axes, df: pd.DataFrame):
     today     = pd.Timestamp.today()
@@ -138,13 +117,7 @@ def chart_tenure_distribution(ax: plt.Axes, df: pd.DataFrame):
         edgecolor="white",
         alpha=0.85,
     )
-    # ax.axvline(
-    #     tenure_df["tenure_years"].median(),
-    #     color=CLR_ORANGE,
-    #     linestyle="--",
-    #     linewidth=1.5,
-    #     label=f"Median: {tenure_df['tenure_years'].median():.1f} yrs",
-    # )
+
     ax.set_xlabel("Years of Tenure", fontsize=10)
     ax.set_ylabel("Number of Employees", fontsize=10)
     ax.set_title("Tenure Distribution", fontsize=12, fontweight="bold", pad=10)
@@ -154,7 +127,7 @@ def chart_tenure_distribution(ax: plt.Axes, df: pd.DataFrame):
     _annotate_source(ax)
 
 
-# ── Chart 5: Benefits Enrollment Rate by Department ──────────────────────────
+# Chart 5: Benefits Enrollment Rate by Department 
 
 def chart_benefits_enrollment_rate(
     ax: plt.Axes, golden: pd.DataFrame, benefits: pd.DataFrame
@@ -201,7 +174,7 @@ def chart_benefits_enrollment_rate(
     _annotate_source(ax)
 
 
-# ── Chart 6: Data Quality Summary ────────────────────────────────────────────
+# Chart 6: Data Quality Summary
 
 def chart_data_quality_summary(ax: plt.Axes, quality_report: pd.DataFrame):
     """
@@ -231,7 +204,7 @@ def chart_data_quality_summary(ax: plt.Axes, quality_report: pd.DataFrame):
     _annotate_source(ax)
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# Entry point
 
 def generate_eda_report(
     golden: pd.DataFrame,
@@ -251,7 +224,7 @@ def generate_eda_report(
         fontweight="bold",
         y=0.995,
     )
-    # LOOK INTO LATER - proper positioning
+    # Todo: LOOK INTO LATER - proper positioning
     fig.text(
         0.5, 0.990,
         f"Generated: {timestamp}  |  Records: {len(golden):,} employees",

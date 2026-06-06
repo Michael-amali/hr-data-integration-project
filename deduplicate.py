@@ -1,30 +1,3 @@
-"""
-Deduplication module for the GlobalTech HR Data Integration pipeline.
-
-Three-pass deduplication strategy:
-  Pass 1 — Exact employee ID match
-    Records sharing the same namespaced ID (GT-XXXXXX or AC-XXXXXX) are the
-    same employee. Keep the highest-priority source; remove the rest.
-    Priority: globaltech_hris (1) > payroll (2) > benefits (3) > acquiredco_api (4)
-
-  Pass 2 — Email match (all records)
-    Records sharing the same email are the same person (e.g., contractor in
-    both companies). Keep the highest-priority source; remove the rest.
-
-  Pass 3 — Fuzzy name + hire date match
-    Use rapidfuzz to compare full name pairs with similarity >= 88%.
-    Blocking: records are sorted by hire_date; only records within 30 days of
-    each other are compared. This keeps the algorithm O(n × k), not O(n²).
-    These are flagged as probable_match — HR must confirm via the review file.
-    No records are auto-removed in this pass.
-
-Additional outputs:
-  Ghost employees: payroll records with no matching employee_id in the employee DF.
-  Provenance:      source_systems and dedup_method columns on every golden record.
-
-Entry point: run_deduplication(data: dict) -> dict
-"""
-
 import numpy as np
 import pandas as pd
 from rapidfuzz import fuzz
@@ -33,22 +6,11 @@ from config import CONFIG
 from utils import logger
 
 
-# ── Pass 1: Exact employee ID match ──────────────────────────────────────────
+# Pass 1: Exact employee ID match
 
 def pass1_exact_id(df: pd.DataFrame) -> pd.DataFrame:
     """
     Remove records that share the same namespaced employee_id.
-
-    When multiple records share an ID, the highest-priority source survives.
-    Source priority (from config): globaltech_hris=1, acquiredco_api=4.
-
-    Catches ACQ_DUP_XXXXX records: they were namespaced to the same AC-XXXXXX
-    as their ACQ_XXXXX counterpart in clean.py, making them exact-ID duplicates.
-
-    Adds columns:
-        _priority      — numeric source priority (dropped before final export)
-        source_systems — comma-joined sources for all records sharing this ID
-        dedup_method   — "exact_id" if a duplicate existed; "single_source" if not
     """
     initial = len(df)
 
@@ -75,17 +37,11 @@ def pass1_exact_id(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ── Pass 2: Email match ───────────────────────────────────────────────────────
+# Pass 2: Email match
 
 def pass2_email_match(df: pd.DataFrame) -> pd.DataFrame:
     """
     Remove records sharing the same email address.
-
-    When multiple records share an email, the highest-priority source survives
-    (already sorted by _priority from Pass 1). The surviving record's
-    source_systems is updated to include all sources from the duplicate group.
-
-    Applies across all records (GT-GT, GT-AC, AC-AC).
     """
     initial = len(df)
 
@@ -99,10 +55,14 @@ def pass2_email_match(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     # Collect merged source_systems for each duplicate email group
+    def merge_sources(series):
+        sources = ",".join(series).split(",")
+        return ",".join(sorted(set(sources)))
+
     email_source_map = (
         df[df["email"].isin(dup_emails)]
-        .groupby("email")
-        .apply(lambda g: ",".join(sorted(set(",".join(g["source_systems"]).split(",")))))
+        .groupby("email")["source_systems"]
+        .apply(merge_sources)
         .to_dict()
     )
 
@@ -123,24 +83,11 @@ def pass2_email_match(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# ── Pass 3: Fuzzy name + hire date ───────────────────────────────────────────
+# Pass 3: Fuzzy name + hire date
 
 def pass3_fuzzy_match(df: pd.DataFrame) -> pd.DataFrame:
     """
     Find probable duplicates using fuzzy name matching, blocked by hire date.
-
-    Algorithm:
-      1. Drop records with null hire_date or name fields.
-      2. Sort remaining records by hire_date (ascending).
-      3. For each record i, advance j forward while hire_date[j] - hire_date[i]
-         <= 30 days. Compare names within this window.
-      4. Pairs with rapidfuzz token_sort_ratio >= 88 are flagged.
-
-    The hire_date block keeps complexity at O(n × k) where k is the average
-    number of records within the 30-day window — far less than O(n²).
-
-    Returns a DataFrame of probable match pairs for HR review.
-    Does NOT remove any records from the main employee dataset.
     """
     threshold = CONFIG["fuzzy_threshold"]       # 88
     window    = CONFIG["hire_date_window_days"] # 30
@@ -194,21 +141,11 @@ def pass3_fuzzy_match(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-# ── Ghost employee detection ──────────────────────────────────────────────────
+# Ghost employee detection
 
 def detect_ghosts(payroll: pd.DataFrame, original_employee_ids: set) -> pd.DataFrame:
     """
     Find payroll records with no matching employee_id in the original HRIS.
-
-    Compares against the FULL pre-dedup employee ID set, not the post-dedup golden
-    set. This is critical: an employee removed by email dedup is not a ghost —
-    they exist in the HRIS. A ghost is someone in payroll with NO HRIS record at all.
-
-    Ghost flag reasons:
-      "ghost_prefix_id"  — employee_id starts with GHOST_ (pre-seeded test case)
-      "no_hris_match"    — employee_id not found in any HRIS record
-
-    Required output columns: payroll_employee_id, name, salary_usd_annual, ghost_flag_reason
     """
     ghost_mask = ~payroll["employee_id"].astype(str).isin(original_employee_ids)
     ghosts     = payroll[ghost_mask].copy()
@@ -231,17 +168,10 @@ def detect_ghosts(payroll: pd.DataFrame, original_employee_ids: set) -> pd.DataF
     return ghost_report
 
 
-# ── Payroll merge ─────────────────────────────────────────────────────────────
-
+# Payroll merge
 def merge_payroll(golden: pd.DataFrame, payroll: pd.DataFrame) -> pd.DataFrame:
     """
     Left-join the most recent payroll record onto each employee.
-
-    For employees with multiple payroll rows (multiple pay periods), only the
-    row with the latest effective_date is kept. Employees with no payroll
-    record retain NaN in all salary columns.
-
-    Updates source_systems to append ",payroll" where payroll data was found.
     """
     payroll = payroll.copy()
     payroll["effective_date"] = pd.to_datetime(payroll["effective_date"], errors="coerce")
@@ -273,52 +203,33 @@ def merge_payroll(golden: pd.DataFrame, payroll: pd.DataFrame) -> pd.DataFrame:
     return merged
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# Entry point
 
 def run_deduplication(data: dict) -> dict:
     """
     Run all deduplication passes and produce the golden dataset and side outputs.
-
-    Parameters
-    ----------
-    data : dict
-        Output of clean_all():
-        {"employees": DataFrame, "payroll": DataFrame, "benefits": DataFrame}
-
-    Returns
-    -------
-    dict with keys:
-        "golden"           — cleaned, deduplicated employees with payroll merged in
-        "ghosts"           — payroll records with no HRIS match (ghost employee report)
-        "probable_matches" — fuzzy-matched pairs for HR review
-        "benefits"         — passed through unchanged for visualization
     """
     employees = data["employees"].copy()
     payroll   = data["payroll"].copy()
 
-    # Snapshot ALL employee IDs before any dedup pass.
-    # Ghost detection uses this set so that employees merged away by email dedup
-    # are NOT flagged as ghosts — they exist in HRIS, just not in the golden set.
+    # ALL employee IDs before any dedup pass.
     original_employee_ids = set(employees["employee_id"].dropna().astype(str))
 
     logger.info(f"  Starting dedup: {len(employees):,} employee records")
 
-    # ── Pass 1: Exact ID ─────────────────────────────────────────────────────
+    # Pass 1: Exact ID
     employees = pass1_exact_id(employees)
 
-    # ── Pass 2: Email match ──────────────────────────────────────────────────
+    # Pass 2: Email match
     employees = pass2_email_match(employees)
 
-    # ── Pass 3: Fuzzy name + hire date (review file only, no records removed) ──
+    # Pass 3: Fuzzy name + hire date (review file only, no records removed)
     probable_matches = pass3_fuzzy_match(employees)
 
-    # ── Ghost detection ───────────────────────────────────────────────────────
-    # Use the full PRE-DEDUP employee ID set so that employees removed by email
-    # dedup are not incorrectly flagged as ghosts. A ghost is someone in payroll
-    # who has NO HRIS record at all — not someone whose record was merged away.
+    # Ghost detection
     ghosts = detect_ghosts(payroll, original_employee_ids)
 
-    # ── Merge payroll ─────────────────────────────────────────────────────────
+    # Merge payroll
     golden = merge_payroll(employees, payroll)
 
     # Drop internal working column

@@ -13,7 +13,7 @@ class DataQualityValidator:
         self.results   = []
         self.n         = len(df)
 
-    # ── Internal recorder ─────────────────────────────────────────────────────
+    # Internal recorder
 
     def _record(self, check: str, description: str, failed: int, total: int) -> dict:
         pass_rate = 1 - (failed / total) if total > 0 else 1.0
@@ -29,7 +29,7 @@ class DataQualityValidator:
         self.results.append(result)
         return result
 
-    # ── Check methods ─────────────────────────────────────────────────────────
+    # Check methods
 
     def check_not_null(self, column: str, description: str) -> dict:
         """Fail = number of null values in column."""
@@ -87,7 +87,7 @@ class DataQualityValidator:
             f"REFERENTIAL: {fk_column}->{pk_column}", description, failed, total
         )
 
-    # ── Report ────────────────────────────────────────────────────────────────
+    # Report
 
     def generate_report(self) -> pd.DataFrame:
         """Compile results into a DataFrame and log a formatted summary."""
@@ -112,7 +112,7 @@ class DataQualityValidator:
         return report
 
 
-# ── Pipeline gate ─────────────────────────────────────────────────────────────
+# Pipeline gate
 
 def pipeline_gate(report: pd.DataFrame, max_failures: int = 2) -> None:
     """
@@ -141,7 +141,7 @@ def pipeline_gate(report: pd.DataFrame, max_failures: int = 2) -> None:
         )
 
 
-# ── HTML export ───────────────────────────────────────────────────────────────
+# HTML export
 
 _HTML_STYLE = """
     <style>
@@ -185,21 +185,16 @@ def export_html_report(report: pd.DataFrame, output_path) -> None:
     logger.info(f"  HTML report exported: {output_path}")
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# Entry point
 
 def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
     """
     Run all 15 quality checks on the golden employee dataset.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        The golden dataset (post-dedup, post-payroll-merge).
     """
     today = datetime.now().strftime("%Y-%m-%d")
     v = DataQualityValidator(df, threshold=CONFIG["quality_threshold"])
 
-    # ── NOT NULL checks ───────────────────────────────────────────────────────
+    # NOT NULL checks
     v.check_not_null("employee_id", "Every employee must have an ID")
     v.check_not_null("first_name",  "Every employee must have a first name")
     v.check_not_null("last_name",   "Every employee must have a last name")
@@ -207,11 +202,11 @@ def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
     v.check_not_null("department",  "Every employee must be assigned to a department")
     v.check_not_null("country",     "Every employee must have a country on record")
 
-    # ── UNIQUE checks ─────────────────────────────────────────────────────────
+    # UNIQUE checks
     v.check_unique("email",       "Emails must be unique after deduplication")
     v.check_unique("employee_id", "Employee IDs must be unique after deduplication")
 
-    # ── VALUES IN SET checks ──────────────────────────────────────────────────
+    # VALUES IN SET checks
     v.check_values_in_set(
         "employment_type",
         CONFIG["valid_employment_types"],
@@ -223,7 +218,7 @@ def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
         "Currency must be USD, EUR, or GBP",
     )
 
-    # ── REGEX checks ──────────────────────────────────────────────────────────
+    # REGEX checks
     v.check_regex(
         "email",
         CONFIG["email_regex"],
@@ -235,7 +230,7 @@ def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
         "Employee ID must match GT-XXXXXX or AC-XXXXXX format",
     )
 
-    # ── NUMERIC RANGE check ───────────────────────────────────────────────────
+    # NUMERIC RANGE check
     v.check_numeric_range(
         "salary_usd_annual",
         CONFIG["salary_min_usd"],
@@ -243,7 +238,7 @@ def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
         f"Annual USD salary must be between ${CONFIG['salary_min_usd']:,} and ${CONFIG['salary_max_usd']:,}",
     )
 
-    # ── DATE RANGE check ──────────────────────────────────────────────────────
+    # DATE RANGE check
     v.check_date_range(
         "hire_date",
         CONFIG["hire_date_min"],
@@ -251,7 +246,7 @@ def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
         f"Hire date must be between {CONFIG['hire_date_min']} and today",
     )
 
-    # ── REFERENTIAL INTEGRITY check ───────────────────────────────────────────
+    # REFERENTIAL INTEGRITY check
     v.check_referential_integrity(
         "manager_id",
         "employee_id",
@@ -260,7 +255,7 @@ def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
 
     report = v.generate_report()
 
-    # ── Export results ────────────────────────────────────────────────────────
+    # Export results
     out_dir = CONFIG["output_dir"]
 
     csv_path = out_dir / "quality_report.csv"
@@ -270,7 +265,7 @@ def run_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
     html_path = out_dir / "quality_report.html"
     export_html_report(report, html_path)
 
-    # ── Pipeline gate ─────────────────────────────────────────────────────────
+    # Pipeline gate
     pipeline_gate(report, max_failures=2)
 
     return report
