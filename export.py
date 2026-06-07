@@ -11,7 +11,7 @@ from config import CONFIG
 from utils import logger
 
 
-# ── Golden dataset ─────────────────────────────────────────────────────────────
+# Golden dataset
 
 def export_golden_parquet(golden: pd.DataFrame, output_dir: Path) -> Path:
 
@@ -43,7 +43,7 @@ def export_golden_csv(golden: pd.DataFrame, output_dir: Path) -> Path:
     return path
 
 
-# ── Ghost employees ────────────────────────────────────────────────────────────
+# Ghost employees
 
 def export_ghost_employees(ghosts: pd.DataFrame, output_dir: Path) -> Path:
     """
@@ -55,7 +55,7 @@ def export_ghost_employees(ghosts: pd.DataFrame, output_dir: Path) -> Path:
     return path
 
 
-# ── Probable matches ───────────────────────────────────────────────────────────
+# Probable matches
 
 def export_probable_matches(probable_matches: pd.DataFrame, output_dir: Path) -> Path:
     """
@@ -67,7 +67,7 @@ def export_probable_matches(probable_matches: pd.DataFrame, output_dir: Path) ->
     return path
 
 
-# ── Schema documentation ───────────────────────────────────────────────────────
+# Schema documentation
 
 _SCHEMA_DOCS = [
     ("employee_id",            "str",       "Namespaced employee identifier",                  "GT-001042 / AC-001042"),
@@ -128,7 +128,7 @@ def export_schema_documentation(output_dir: Path) -> Path:
     return path
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
+# Entry point
 
 def export_all(result: dict, output_dir: Path) -> None:
     """

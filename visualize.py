@@ -7,32 +7,20 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from config import CONFIG
 from utils import logger
 
 PALETTE    = sns.color_palette("colorblind")
-CLR_BLUE   = PALETTE[0]   # #0072B2
-CLR_ORANGE = PALETTE[1]   # #E69F00
-CLR_GREEN  = PALETTE[2]   # #009E73
-CLR_RED    = PALETTE[3]   # #D55E00
-CLR_PURPLE = PALETTE[4]   # #CC79A7
+CLR_BLUE   = PALETTE[0]
+CLR_ORANGE = PALETTE[1]
+CLR_GREEN  = PALETTE[2]
+CLR_RED    = PALETTE[3]
+CLR_PURPLE = PALETTE[4]
 CLR_PASS   = CLR_GREEN
 CLR_FAIL   = CLR_RED
-SOURCE_NOTE = "Source: GlobalTech HR Integration Pipeline"
-
-
-def _annotate_source(ax, note: str = SOURCE_NOTE):
-    ax.text(
-        0.99, -0.08, note,
-        transform=ax.transAxes,
-        ha="right", va="top",
-        fontsize=7, color="#777777",
-    )
 
 
 def _despine(ax):
     sns.despine(ax=ax, left=False, bottom=False)
-
 
 # Chart 1: Headcount by Department
 
@@ -51,7 +39,6 @@ def chart_headcount_by_department(ax: plt.Axes, df: pd.DataFrame):
     ax.tick_params(axis="y", labelsize=8)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
-    _annotate_source(ax)
 
 
 # Chart 2: Headcount by Country
@@ -71,7 +58,6 @@ def chart_headcount_by_country(ax: plt.Axes, df: pd.DataFrame):
     ax.tick_params(axis="y", labelsize=8)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
-    _annotate_source(ax)
 
 
 # Chart 3: Salary Distribution by Employment Type (Box Plot)
@@ -99,7 +85,6 @@ def chart_salary_by_employment_type(ax: plt.Axes, df: pd.DataFrame):
     ax.set_title("Salary Distribution by Employment Type", fontsize=12, fontweight="bold", pad=10)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}k"))
     _despine(ax)
-    _annotate_source(ax)
 
 
 # Chart 4: Tenure Distribution
@@ -124,7 +109,6 @@ def chart_tenure_distribution(ax: plt.Axes, df: pd.DataFrame):
     ax.legend(fontsize=9)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
-    _annotate_source(ax)
 
 
 # Chart 5: Benefits Enrollment Rate by Department 
@@ -153,13 +137,12 @@ def chart_benefits_enrollment_rate(
     )
     gt["enrolled"] = gt["_id_int"].isin(enrolled_ids)
 
-    dept_stats = (
-        gt.groupby("department")
-        .agg(total=("employee_id", "count"), enrolled=("enrolled", "sum"))
-        .assign(rate=lambda x: x["enrolled"] / x["total"])
-        .sort_values("rate")
-        .tail(20)
+    dept_stats = gt.groupby("department").agg(
+        total_employees=("employee_id", "count"),
+        enrolled_employees=("enrolled", "sum")
     )
+    dept_stats["rate"] = (dept_stats["enrolled_employees"] / dept_stats["total_employees"])
+    dept_stats = dept_stats.sort_values(by="rate").tail(20)
 
     bar_colors = [CLR_GREEN if r >= 0.5 else CLR_ORANGE for r in dept_stats["rate"]]
     bars = ax.barh(dept_stats.index, dept_stats["rate"], color=bar_colors, edgecolor="white")
@@ -171,7 +154,6 @@ def chart_benefits_enrollment_rate(
     ax.tick_params(axis="y", labelsize=8)
     ax.legend(fontsize=8)
     _despine(ax)
-    _annotate_source(ax)
 
 
 # Chart 6: Data Quality Summary
@@ -201,7 +183,6 @@ def chart_data_quality_summary(ax: plt.Axes, quality_report: pd.DataFrame):
     ax.legend(fontsize=9)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
-    _annotate_source(ax)
 
 
 # Entry point
@@ -215,22 +196,13 @@ def generate_eda_report(
     """
     Produce a 6-chart HR analytics report and save as a high-resolution PNG.
     """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     fig, axes = plt.subplots(3, 2, figsize=(26, 20))
     fig.suptitle(
-        "GlobalTech HR Integration — Post-Merger Workforce Analytics",
+        "GlobalTech HR Integration — Analytics",
         fontsize=18,
         fontweight="bold",
         y=0.995,
-    )
-    # Todo: LOOK INTO LATER - proper positioning
-    fig.text(
-        0.5, 0.990,
-        f"Generated: {timestamp}  |  Records: {len(golden):,} employees",
-        ha="center",
-        fontsize=10,
-        color="#555555",
     )
 
     sns.set_style("whitegrid")
