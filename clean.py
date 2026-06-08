@@ -24,13 +24,23 @@ def standardize_name(series: pd.Series) -> pd.Series:
         .replace({"Nan": np.nan, "None": np.nan, "": np.nan})
     )
 
-# Department standardization
+# Employment Type standardization
 
-def standardize_department(series:pd.Series) -> pd.Series:
-        return (
+def standardize_employment_type(series:pd.Series) -> pd.Series:
+    return (
         series
         .astype(str)
         .map(CONFIG['employment_type_map'])
+    )
+
+# Department standardization
+
+def standardize_department(series:pd.Series) -> pd.Series:
+    return (
+        series
+        .astype(str)
+        .str.strip()
+        .replace({"Nan": np.nan, "None": np.nan, "": np.nan})
     )
 
 
@@ -202,8 +212,9 @@ def clean_employees(df: pd.DataFrame) -> pd.DataFrame:
 
     df = namespace_employee_ids(df)
 
-    df["employment_type"] = standardize_department(df["employment_type"])
+    df["employment_type"] = standardize_employment_type(df["employment_type"])
     df["email"] = standardize_emails(df["email"])
+    df["department"] = standardize_department(df["department"])
     df = standardize_hire_date(df)
 
 

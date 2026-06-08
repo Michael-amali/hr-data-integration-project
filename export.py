@@ -15,7 +15,7 @@ from utils import logger
 
 def export_golden_parquet(golden: pd.DataFrame, output_dir: Path) -> Path:
 
-    parquet_dir = output_dir / "golden_employees.parquet"
+    parquet_dir = output_dir / "golden_employees"
 
     # Remove any stale partition files from previous runs before writing
     if parquet_dir.exists():
@@ -70,16 +70,16 @@ def export_probable_matches(probable_matches: pd.DataFrame, output_dir: Path) ->
 # Schema documentation
 
 _SCHEMA_DOCS = [
-    ("employee_id",            "str",       "Namespaced employee identifier",                  "GT-001042 / AC-001042"),
+    ("employee_id",            "str",       "Namespaced employee identifier",                   "GT-001042 / AC-001042"),
     ("first_name",             "str",       "Employee first name (NFC-normalized, title case)", "Michael"),
     ("last_name",              "str",       "Employee last name (NFC-normalized, title case)",  "King"),
     ("email",                  "str",       "Work email address (lowercase)",                   "michael.king@globaltech.com"),
-    ("department",             "str",       "Organisational department (as-sourced)",           "Engineering"),
-    ("job_title",              "str",       "Job title / role",                                "Data Analyst"),
-    ("hire_date",              "datetime",  "Date employment started (timezone-naive UTC)",     "2016-09-21"),
+    ("department",             "str",       "Organisational department",                        "Engineering"),
+    ("job_title",              "str",       "Job title / role",                                 "Data Analyst"),
+    ("hire_date",              "datetime",  "Date employment started",                          "2016-09-21"),
     ("country",                "str",       "Country of employment",                            "Netherlands"),
     ("employment_type",        "str",       "Canonical employment type",                        "Full-Time / Part-Time / Contractor"),
-    ("manager_id",             "str",       "Namespaced ID of the direct manager (nullable)",   "GT-012765"),
+    ("manager_id",             "str",       "Namespaced ID of the direct manager",              "GT-012765"),
     ("source_system",          "str",       "Primary source system for this record",            "globaltech_hris"),
     ("company_origin",         "str",       "Company this employee originally belonged to",     "GlobalTech / AcquiredCo"),
     ("hire_date_out_of_range", "bool",      "True if hire_date is before 1970 or after today",  "False"),
@@ -120,7 +120,6 @@ def export_schema_documentation(output_dir: Path) -> Path:
         "- FX rates (fixed): USD=1.00, EUR=1.08, GBP=1.27",
         "- Pay frequency multipliers: Annual=1, Monthly=12, Bi-Weekly=26",
         "- Employee IDs that do not begin with `GT-` or `AC-` failed namespacing and were logged.",
-        "- Department names are left as-sourced; no taxonomy normalization was applied.",
     ]
 
     path.write_text("\n".join(lines), encoding="utf-8")

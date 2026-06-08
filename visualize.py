@@ -22,6 +22,14 @@ CLR_FAIL   = CLR_RED
 def _despine(ax):
     sns.despine(ax=ax, left=False, bottom=False)
 
+def _annotate_source(ax, note: str):
+    ax.text(
+        0.99, 0.99, note,
+        transform=ax.transAxes,
+        ha="right", va="top",
+        fontsize=7, color="#777777",
+    )
+
 # Chart 1: Headcount by Department
 
 def chart_headcount_by_department(ax: plt.Axes, df: pd.DataFrame):
@@ -39,6 +47,7 @@ def chart_headcount_by_department(ax: plt.Axes, df: pd.DataFrame):
     ax.tick_params(axis="y", labelsize=8)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
+    _annotate_source(ax, "Source: Unified employees from GlobalTech CSV, AcquireCo JSON")
 
 
 # Chart 2: Headcount by Country
@@ -58,6 +67,7 @@ def chart_headcount_by_country(ax: plt.Axes, df: pd.DataFrame):
     ax.tick_params(axis="y", labelsize=8)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
+    _annotate_source(ax, "Source: Unified employees from GlobalTech CSV, AcquireCo JSON")
 
 
 # Chart 3: Salary Distribution by Employment Type (Box Plot)
@@ -85,6 +95,7 @@ def chart_salary_by_employment_type(ax: plt.Axes, df: pd.DataFrame):
     ax.set_title("Salary Distribution by Employment Type", fontsize=12, fontweight="bold", pad=10)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}k"))
     _despine(ax)
+    _annotate_source(ax, "Source: Unified employees from GlobalTech CSV, AcquireCo JSON, Payroll Excel")
 
 
 # Chart 4: Tenure Distribution
@@ -109,6 +120,7 @@ def chart_tenure_distribution(ax: plt.Axes, df: pd.DataFrame):
     ax.legend(fontsize=9)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
+    _annotate_source(ax, "Source: Unified employees from GlobalTech CSV, AcquireCo JSON")
 
 
 # Chart 5: Benefits Enrollment Rate by Department 
@@ -154,6 +166,7 @@ def chart_benefits_enrollment_rate(
     ax.tick_params(axis="y", labelsize=8)
     ax.legend(fontsize=8)
     _despine(ax)
+    _annotate_source(ax, "Source: Benefits enrollment XML")
 
 
 # Chart 6: Data Quality Summary
@@ -162,7 +175,7 @@ def chart_data_quality_summary(ax: plt.Axes, quality_report: pd.DataFrame):
     """
     Grouped bar showing passed vs failed counts per quality check.
     """
-    labels  = quality_report["check"].str.split(": ", n=1).str[-1].str[:30]
+    labels  = quality_report["check"]
     x       = np.arange(len(labels))
     width   = 0.38
 
@@ -183,6 +196,7 @@ def chart_data_quality_summary(ax: plt.Axes, quality_report: pd.DataFrame):
     ax.legend(fontsize=9)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     _despine(ax)
+    _annotate_source(ax, "Source: Unified employees from GlobalTech CSV, AcquireCo JSON, Payroll Excel")
 
 
 # Entry point

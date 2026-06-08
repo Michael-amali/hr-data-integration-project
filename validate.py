@@ -84,7 +84,7 @@ class DataQualityValidator:
         failed        = len(orphan_ids)           # distinct bad FK values
         total         = len(fk_distinct) 
         return self._record(
-            f"REFERENTIAL: {fk_column}->{pk_column}", description, failed, total
+            f"REFERENTIAL: {fk_column} -> {pk_column}", description, failed, total
         )
 
     # Report
