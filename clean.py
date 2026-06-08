@@ -43,7 +43,6 @@ def _namespace_id(raw_id: str, company_origin: str) -> str:
     raw_id = str(raw_id).strip()
 
     if raw_id.upper().startswith("GHOST"):
-        print(raw_id, company_origin)
         return raw_id
 
     # ACQ_DUP_XXXXX are intentional duplicate seeds; they map to the same AC-
