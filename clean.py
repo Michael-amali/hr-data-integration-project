@@ -75,9 +75,6 @@ def _namespace_id(raw_id: str, company_origin: str) -> str:
 def namespace_employee_ids(df: pd.DataFrame) -> pd.DataFrame:
     """
     Apply namespaced IDs to the employees DataFrame.
-
-    Converts both employee_id and manager_id using company_origin as context.
-    manager_id NaN values are preserved.
     """
     df["employee_id"] = [
         _namespace_id(eid, origin)
@@ -100,22 +97,13 @@ def namespace_employee_ids(df: pd.DataFrame) -> pd.DataFrame:
 
 def standardize_hire_date(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normalize hire_date to datetime64[ns] and flag implausible values.
-
-    Out-of-range definition: before 1970-01-01 or after today.
-    Result stored in a new boolean column: hire_date_out_of_range.
+    Normalize hire_date to datetime
     """
     today    = pd.Timestamp.today().normalize()
     min_date = pd.Timestamp(CONFIG["hire_date_min"])
 
-    # The combined DF has three date formats:
-    #   HRIS        "2016-09-21"                  (date only)
-    #   AcquiredCo  "2024-06-27T00:00:00"         (ISO datetime, no tz)
-    #   DUP records "2015-11-24T00:00:00Z"        (ISO datetime, UTC marker)
-    # Strip trailing Z first, then use format='mixed' to handle all three.
     df["hire_date"] = pd.to_datetime(
-        df["hire_date"].astype(str).str.rstrip("Z"),
-        format="mixed",
+        df["hire_date"].astype(str),
         errors="coerce",
     )
     in_range = df["hire_date"].between(min_date, today)
